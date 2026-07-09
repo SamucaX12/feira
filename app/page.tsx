@@ -93,6 +93,9 @@ export default function HomePage() {
             <span className="badge border-sky-400/30 bg-sky-950/25 text-sky-200">
               Celular & PC
             </span>
+            <span className="badge border-violet-400/25 bg-violet-950/20 text-violet-200">
+              ♿ Voz + Acessibilidade
+            </span>
             {(Object.keys(BIN_META) as Array<keyof typeof BIN_META>).map(
               (key) => (
                 <span

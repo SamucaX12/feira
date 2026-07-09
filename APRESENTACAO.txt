@@ -80,8 +80,10 @@ confirma o material e mostra a lixeira:
 O site foi feito com Next.js e está na nuvem, na Vercel. Funciona em
 qualquer lugar — na escola, no celular, no notebook — sem depender do meu PC.
 
-Tem QR Code pra galera acessar na hora, dashboard com estatísticas ao vivo
-e filtros inteligentes pra não confundir alumínio com papel."
+Tem QR Code pra galera acessar na hora, dashboard com estatísticas ao vivo,
+filtros inteligentes pra não confundir alumínio com papel, retorno por VOZ
+para acessibilidade — o site fala a lixeira em voz alta — e dicas de HIGIENE
+pra lavar embalagens antes de reciclar."
 
 [Mostra QR Code / dashboard na tela]
 

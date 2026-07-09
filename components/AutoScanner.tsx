@@ -18,6 +18,11 @@ import { loadTmImageModule } from "@/lib/tmLoader";
 import { getWasteInfo, normalizeMaterial } from "@/lib/wasteRules";
 import { LivePrediction, MaterialType } from "@/types/detection";
 import type { TmImageModule } from "@/types/tm";
+import VoiceToggle from "@/components/VoiceToggle";
+import {
+  initVoiceEngine,
+  speakMaterialFeedback,
+} from "@/lib/voiceFeedback";
 
 const SHOW_THRESHOLD = 0.28;
 const STABLE_MS = 1400;
@@ -115,6 +120,7 @@ export default function AutoScanner({
         setConfirmProgress(0);
         setLastSaved({ material, confidence });
         setStatus("Descarte registrado com sucesso!");
+        speakMaterialFeedback(material);
         onDetectionSaved();
       } catch (saveError) {
         setError(
@@ -342,6 +348,7 @@ export default function AutoScanner({
   }, [loadAiModel, startScanLoop, stopScanLoop]);
 
   useEffect(() => {
+    initVoiceEngine();
     const mobile = isMobileDevice();
     setIsMobile(mobile);
 
@@ -400,6 +407,13 @@ export default function AutoScanner({
           }`}
         >
           {isReady ? "● Live" : "Boot"}
+        </span>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <VoiceToggle />
+        <span className="badge border-violet-400/25 bg-violet-950/20 text-violet-200">
+          ♿ Acessível por voz
         </span>
       </div>
 
@@ -487,6 +501,8 @@ export default function AutoScanner({
             material={lastSaved.material}
             confidence={lastSaved.confidence}
             saved
+            showHygiene
+            showVoiceButton
           />
         </div>
       )}

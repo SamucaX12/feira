@@ -9,6 +9,9 @@ export interface WasteInfo {
   instruction: string;
   successMessage: string;
   examples: string;
+  hygieneTip: string;
+  voiceLabel: string;
+  voiceBinName: string;
 }
 
 export const WASTE_INFO: Record<MaterialType, WasteInfo> = {
@@ -21,6 +24,10 @@ export const WASTE_INFO: Record<MaterialType, WasteInfo> = {
     instruction: "Esvazie, enxágue e amasse a garrafa antes de descartar.",
     successMessage: "Correto! PET vai para a lixeira amarela (reciclável).",
     examples: "Garrafa d'água, refrigerante, suco",
+    hygieneTip:
+      "Lembre-se de esvaziar e lavar a embalagem antes de descartar — isso melhora a qualidade do material reciclado.",
+    voiceLabel: "Plástico PET detectado",
+    voiceBinName: "Jogue na lixeira amarela, reciclável",
   },
   Papel: {
     label: "Papel",
@@ -31,6 +38,10 @@ export const WASTE_INFO: Record<MaterialType, WasteInfo> = {
     instruction: "Descarte seco, sem gordura ou sujeira.",
     successMessage: "Correto! Papel vai para a lixeira amarela (reciclável).",
     examples: "Folha sulfite, jornal, revista",
+    hygieneTip:
+      "Mantenha o papel seco e limpo. Papel sujo ou com gordura não pode ser reciclado.",
+    voiceLabel: "Papel detectado",
+    voiceBinName: "Jogue na lixeira amarela, reciclável",
   },
   Papelao: {
     label: "Papelão",
@@ -41,6 +52,10 @@ export const WASTE_INFO: Record<MaterialType, WasteInfo> = {
     instruction: "Desmonte a caixa e deixe seca antes de descartar.",
     successMessage: "Correto! Papelão vai para a lixeira amarela (reciclável).",
     examples: "Caixa de delivery, embalagem",
+    hygieneTip:
+      "Desmonte a caixa e remova fita ou restos de comida. Papelão limpo recicla melhor.",
+    voiceLabel: "Papelão detectado",
+    voiceBinName: "Jogue na lixeira amarela, reciclável",
   },
   Lata: {
     label: "Lata (aço/ferro)",
@@ -51,6 +66,10 @@ export const WASTE_INFO: Record<MaterialType, WasteInfo> = {
     instruction: "Esvazie e enxágue a lata antes de descartar.",
     successMessage: "Correto! Lata vai para a lixeira amarela (reciclável).",
     examples: "Lata de milho, sardinha, tinta",
+    hygieneTip:
+      "Lembre-se de esvaziar e lavar a lata antes de descartar — embalagem limpa vale mais na reciclagem.",
+    voiceLabel: "Lata detectada",
+    voiceBinName: "Jogue na lixeira amarela, reciclável",
   },
   Aluminio: {
     label: "Alumínio",
@@ -61,6 +80,10 @@ export const WASTE_INFO: Record<MaterialType, WasteInfo> = {
     instruction: "Esvazie e amasse a embalagem de alumínio.",
     successMessage: "Correto! Alumínio vai para a lixeira amarela (reciclável).",
     examples: "Latinha, tampa, papel-alumínio",
+    hygieneTip:
+      "Lembre-se de enxaguar a latinha antes de descartar. Alumínio limpo é reciclado com mais qualidade.",
+    voiceLabel: "Alumínio detectado",
+    voiceBinName: "Jogue na lixeira amarela, reciclável",
   },
   Pedra: {
     label: "Pedra / Rejeito",
@@ -71,6 +94,10 @@ export const WASTE_INFO: Record<MaterialType, WasteInfo> = {
     instruction: "Não é reciclável. Descarte no lixo comum (rejeito).",
     successMessage: "Correto! Pedra e rejeito vão para a lixeira cinza.",
     examples: "Pedra, cerâmica quebrada, espelho",
+    hygieneTip:
+      "Este material não é reciclável. Descarte com cuidado na lixeira cinza, rejeito.",
+    voiceLabel: "Pedra ou rejeito detectado",
+    voiceBinName: "Jogue na lixeira cinza, rejeito",
   },
   Organico: {
     label: "Orgânico",
@@ -81,6 +108,10 @@ export const WASTE_INFO: Record<MaterialType, WasteInfo> = {
     instruction: "Descarte restos de comida e matéria orgânica.",
     successMessage: "Correto! Orgânico vai para a lixeira marrom.",
     examples: "Casca de banana, restos de comida, folhas",
+    hygieneTip:
+      "Retire embalagens antes de descartar restos de comida. Orgânico vai na lixeira marrom.",
+    voiceLabel: "Orgânico detectado",
+    voiceBinName: "Jogue na lixeira marrom, orgânico",
   },
 };
 
