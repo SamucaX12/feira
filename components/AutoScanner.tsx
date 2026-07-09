@@ -6,14 +6,15 @@ import { classifyFromVideoFrame } from "@/lib/colorClassifier";
 import { cameraBlockedReason, isMobileDevice } from "@/lib/device";
 import { getTeachableMachineModelUrl, isTeachableMachineConfigured } from "@/lib/modelConfig";
 import { loadTmImageModule } from "@/lib/tmLoader";
-import { normalizeMaterial } from "@/lib/wasteRules";
+import { getWasteInfo, normalizeMaterial } from "@/lib/wasteRules";
 import { LivePrediction, MaterialType } from "@/types/detection";
 import type { TmImageModule } from "@/types/tm";
 
-const CONFIDENCE_THRESHOLD = 0.62;
-const STABLE_MS = 1500;
-const POST_COOLDOWN_MS = 4000;
-const SCAN_INTERVAL_MS = 350;
+const SAVE_THRESHOLD = 0.5;
+const SHOW_THRESHOLD = 0.3;
+const STABLE_MS = 1200;
+const POST_COOLDOWN_MS = 3500;
+const SCAN_INTERVAL_MS = 300;
 
 interface AutoScannerProps {
   onPredictionChange: (prediction: LivePrediction | null) => void;
@@ -37,9 +38,11 @@ export default function AutoScanner({
   const streamRef = useRef<MediaStream | null>(null);
   const modelRef = useRef<Awaited<ReturnType<TmImageModule["load"]>> | null>(null);
   const loopRef = useRef<number | null>(null);
+  const scanningRef = useRef(false);
   const stableRef = useRef<StableTrack | null>(null);
   const lastSavedRef = useRef<{ material: MaterialType; at: number } | null>(null);
   const savingRef = useRef(false);
+  const scanModeRef = useRef<ScanMode>("loading");
 
   const tmConfigured = isTeachableMachineConfigured();
   const [scanMode, setScanMode] = useState<ScanMode>(tmConfigured ? "loading" : "color");
@@ -48,6 +51,9 @@ export default function AutoScanner({
   const [isReady, setIsReady] = useState(false);
   const [status, setStatus] = useState("Toque para ativar a câmera");
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ label: string; confidence: number } | null>(
+    null
+  );
   const [current, setCurrent] = useState<{
     material: MaterialType;
     confidence: number;
@@ -56,6 +62,14 @@ export default function AutoScanner({
     material: MaterialType;
     confidence: number;
   } | null>(null);
+
+  const stopScanLoop = useCallback(() => {
+    scanningRef.current = false;
+    if (loopRef.current) {
+      clearTimeout(loopRef.current);
+      loopRef.current = null;
+    }
+  }, []);
 
   const saveDetection = useCallback(
     async (material: MaterialType, confidence: number) => {
@@ -100,17 +114,31 @@ export default function AutoScanner({
 
   const processPrediction = useCallback(
     async (rawMaterial: string, confidence: number) => {
+      setPreview({ label: rawMaterial, confidence });
+
       const material = normalizeMaterial(rawMaterial);
-      if (!material || confidence < CONFIDENCE_THRESHOLD) {
+
+      if (!material || confidence < SHOW_THRESHOLD) {
         stableRef.current = null;
         setCurrent(null);
         onPredictionChange(null);
-        setStatus("Aponte a câmera para o resíduo...");
+        setStatus(
+          material
+            ? `Vendo ${rawMaterial} (${(confidence * 100).toFixed(0)}%) — aproxime mais`
+            : "Aponte a câmera para o resíduo..."
+        );
         return;
       }
 
       setCurrent({ material, confidence });
       onPredictionChange({ material, confidence });
+
+      if (confidence < SAVE_THRESHOLD) {
+        setStatus(
+          `${getWasteInfo(material)?.label ?? material} (${(confidence * 100).toFixed(0)}%) — segure firme`
+        );
+        return;
+      }
 
       const now = Date.now();
       const track = stableRef.current;
@@ -131,38 +159,51 @@ export default function AutoScanner({
     [onPredictionChange, saveDetection]
   );
 
-  const runScanLoop = useCallback(async () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !isReady) return;
+  const startScanLoop = useCallback(() => {
+    stopScanLoop();
+    scanningRef.current = true;
 
-    try {
-      if (scanMode === "tm" && modelRef.current) {
-        const prediction = await modelRef.current.predict(video);
-        const top = prediction.reduce((best, item) =>
-          item.probability > best.probability ? item : best
-        );
-        await processPrediction(top.className, top.probability);
-      } else if (canvas) {
-        const result = classifyFromVideoFrame(video, canvas);
-        if (result) {
-          await processPrediction(result.material, result.confidence);
-        } else {
-          stableRef.current = null;
-          setCurrent(null);
-          onPredictionChange(null);
-          setStatus("Centralize o objeto na câmera...");
+    const tick = async () => {
+      if (!scanningRef.current) return;
+
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+
+      if (video && video.readyState >= 2) {
+        try {
+          if (modelRef.current) {
+            const prediction = await modelRef.current.predict(video);
+            const top = prediction.reduce((best, item) =>
+              item.probability > best.probability ? item : best
+            );
+            await processPrediction(top.className, top.probability);
+          } else if (canvas) {
+            const result = classifyFromVideoFrame(video, canvas);
+            if (result) {
+              await processPrediction(result.material, result.confidence);
+            } else {
+              stableRef.current = null;
+              setCurrent(null);
+              setPreview(null);
+              onPredictionChange(null);
+              setStatus("Centralize o objeto na câmera...");
+            }
+          }
+        } catch (scanError) {
+          console.error(scanError);
+          setStatus("Analisando imagem...");
         }
       }
-    } catch (scanError) {
-      console.error(scanError);
-      setStatus("Analisando...");
-    }
 
-    loopRef.current = window.setTimeout(() => {
-      void runScanLoop();
-    }, SCAN_INTERVAL_MS);
-  }, [isReady, onPredictionChange, processPrediction, scanMode]);
+      if (scanningRef.current) {
+        loopRef.current = window.setTimeout(() => {
+          void tick();
+        }, SCAN_INTERVAL_MS);
+      }
+    };
+
+    void tick();
+  }, [onPredictionChange, processPrediction, stopScanLoop]);
 
   const loadAiModel = useCallback(async (): Promise<ScanMode> => {
     if (!tmConfigured) return "color";
@@ -178,9 +219,10 @@ export default function AutoScanner({
       setError(null);
       return "tm";
     } catch (loadError) {
-      console.warn("TM fallback para modo visual:", loadError);
+      console.warn("TM fallback:", loadError);
+      modelRef.current = null;
       setError(
-        "IA em modo backup — ainda detecta, mas use boa luz e centralize o objeto."
+        "Modo backup ativo — centralize o objeto com boa luz."
       );
       return "color";
     }
@@ -191,6 +233,7 @@ export default function AutoScanner({
     setStatus("Pedindo acesso à câmera...");
 
     try {
+      stopScanLoop();
       streamRef.current?.getTracks().forEach((track) => track.stop());
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -210,8 +253,8 @@ export default function AutoScanner({
       }
 
       const mode = await loadAiModel();
+      scanModeRef.current = mode;
       setScanMode(mode);
-
       setIsReady(true);
       setNeedsTap(false);
       setStatus(
@@ -219,7 +262,7 @@ export default function AutoScanner({
           ? "IA ativa — aponte para o resíduo"
           : "Scanner ativo — aponte para o resíduo"
       );
-      void runScanLoop();
+      startScanLoop();
     } catch (cameraError) {
       const message =
         cameraError instanceof Error
@@ -232,7 +275,7 @@ export default function AutoScanner({
       setStatus("Erro na câmera");
       setNeedsTap(true);
     }
-  }, [loadAiModel, runScanLoop]);
+  }, [loadAiModel, startScanLoop, stopScanLoop]);
 
   useEffect(() => {
     const mobile = isMobileDevice();
@@ -249,14 +292,12 @@ export default function AutoScanner({
     if (!mobile) {
       void startCamera();
     }
-  }, [startCamera]);
 
-  useEffect(() => {
     return () => {
-      if (loopRef.current) clearTimeout(loopRef.current);
+      stopScanLoop();
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
-  }, []);
+  }, [startCamera, stopScanLoop]);
 
   const modeLabel =
     scanMode === "tm"
@@ -264,6 +305,12 @@ export default function AutoScanner({
       : scanMode === "color"
         ? "Detecção visual"
         : "Carregando IA...";
+
+  const overlayLabel = current
+    ? `${current.material} · ${(current.confidence * 100).toFixed(0)}%`
+    : preview
+      ? `${preview.label} · ${(preview.confidence * 100).toFixed(0)}%`
+      : null;
 
   return (
     <section className="glass-panel relative overflow-hidden rounded-2xl p-4 shadow-neon-sm sm:p-5 md:p-6">
@@ -317,13 +364,13 @@ export default function AutoScanner({
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute inset-3 rounded-xl border border-neon/30 sm:inset-4" />
             <div className="absolute left-3 right-3 h-0.5 animate-scan bg-neon shadow-neon sm:left-4 sm:right-4" />
-            {current && (
-              <div className="absolute left-3 right-3 top-3 rounded-lg bg-black/75 px-3 py-2 text-center sm:left-4 sm:right-4 sm:top-4">
+            {overlayLabel && (
+              <div className="absolute left-3 right-3 top-3 rounded-lg bg-black/80 px-3 py-2 text-center sm:left-4 sm:right-4 sm:top-4">
                 <p className="text-[10px] uppercase tracking-wider text-neon/70">
-                  Detectando
+                  {current ? "Detectado" : "Analisando"}
                 </p>
                 <p className="font-[family-name:var(--font-orbitron)] text-sm font-bold text-white sm:text-base">
-                  {current.material} · {(current.confidence * 100).toFixed(0)}%
+                  {overlayLabel}
                 </p>
               </div>
             )}
