@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --neon: #00ff88;
+  --bg: #050807;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  color: #e8fff3;
+  background:
+    radial-gradient(circle at top left, rgba(0, 255, 136, 0.08), transparent 40%),
+    radial-gradient(circle at bottom right, rgba(0, 255, 136, 0.05), transparent 35%),
+    var(--bg);
+}
+
+.scan-grid {
+  background-image:
+    linear-gradient(rgba(0, 255, 136, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 136, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.glass-panel {
+  background: rgba(17, 25, 22, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 255, 136, 0.18);
+}
+
+.neon-text {
+  text-shadow: 0 0 12px rgba(0, 255, 136, 0.45);
+}
