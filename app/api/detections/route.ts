@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { countByBin } from "@/lib/binStats";
 import { connectDB } from "@/lib/mongodb";
 import {
   isMemoryMode,
@@ -16,13 +17,18 @@ function isValidMaterial(value: unknown): value is MaterialType {
 async function getMongoSummary() {
   await connectDB();
 
-  const [totalsAgg, totalDetections, lastDetection] = await Promise.all([
-    Detection.aggregate<{ _id: MaterialType; count: number }>([
-      { $group: { _id: "$material", count: { $sum: 1 } } },
-    ]),
-    Detection.countDocuments(),
-    Detection.findOne().sort({ timestamp: -1 }).lean<IDetection>(),
-  ]);
+  const [totalsAgg, totalDetections, lastDetection, recentDocs] =
+    await Promise.all([
+      Detection.aggregate<{ _id: MaterialType; count: number }>([
+        { $group: { _id: "$material", count: { $sum: 1 } } },
+      ]),
+      Detection.countDocuments(),
+      Detection.findOne().sort({ timestamp: -1 }).lean<IDetection>(),
+      Detection.find()
+        .sort({ timestamp: -1 })
+        .limit(12)
+        .lean<IDetection[]>(),
+    ]);
 
   const totals = MATERIALS.map((material) => {
     const found = totalsAgg.find((item) => item._id === material);
@@ -39,6 +45,13 @@ async function getMongoSummary() {
           timestamp: lastDetection.timestamp.toISOString(),
         }
       : null,
+    recent: recentDocs.map((item, index) => ({
+      id: `${item.timestamp.getTime()}-${index}`,
+      material: item.material,
+      confidence: item.confidence,
+      timestamp: item.timestamp.toISOString(),
+    })),
+    byBin: countByBin(totals),
   };
 }
 
@@ -69,7 +82,10 @@ export async function POST(request: NextRequest) {
 
     if (!isValidMaterial(material)) {
       return NextResponse.json(
-        { error: "Material inválido. Use: PET, Papel, Papelao, Lata, Aluminio, Pedra, Organico." },
+        {
+          error:
+            "Material inválido. Use: PET, Papel, Papelao, Lata, Aluminio, Pedra, Organico.",
+        },
         { status: 400 }
       );
     }
@@ -83,15 +99,12 @@ export async function POST(request: NextRequest) {
 
     if (isMemoryMode()) {
       memoryAdd(material, confidence);
+      const summary = memoryGetSummary();
       return NextResponse.json(
         {
           ok: true,
           storage: "memory",
-          detection: {
-            material,
-            confidence,
-            timestamp: new Date().toISOString(),
-          },
+          detection: summary.lastDetection,
         },
         { status: 201 }
       );

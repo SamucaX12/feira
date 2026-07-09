@@ -87,23 +87,35 @@ export function classifyFromVideoFrame(
   if (h >= 170 && h <= 230) scores.PET = 0.55 + s * 0.35;
   if (s < 0.15 && v > 0.55 && b > r) scores.PET = (scores.PET ?? 0) + 0.4;
 
-  // Papel — branco/bege claro
-  if (s < 0.2 && v > 0.65 && r > 180 && g > 170) scores.Papel = 0.5 + (v - 0.5);
-
-  // Papelão — marrom claro
-  if (h >= 15 && h <= 45 && s >= 0.15 && s <= 0.55 && v >= 0.25 && v <= 0.7) {
-    scores.Papelao = 0.45 + s * 0.4;
-  }
-
-  // Alumínio — prateado brilhante
+  // Alumínio — prateado brilhante (alto brilho, baixa saturação)
   const grayDiff = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
-  if (grayDiff < 25 && v > 0.45 && s < 0.12) {
-    scores.Aluminio = v > 0.65 ? 0.75 : 0.55;
+  if (grayDiff < 22 && v > 0.55 && s < 0.1) {
+    scores.Aluminio = 0.7 + (v - 0.5) * 0.3;
   }
 
-  // Lata — cinza escuro metálico
-  if (grayDiff < 30 && v >= 0.15 && v <= 0.5 && s < 0.15) {
-    scores.Lata = 0.5 + (0.5 - v) * 0.5;
+  // Lata — cinza escuro metálico (menos brilho que alumínio)
+  if (grayDiff < 28 && v >= 0.12 && v <= 0.48 && s < 0.14) {
+    scores.Lata = 0.55 + (0.45 - v) * 0.4;
+  }
+
+  // Papel — branco/bege claro (não metálico)
+  if (s < 0.22 && v > 0.62 && r > 175 && g > 165 && grayDiff > 8) {
+    scores.Papel = 0.55 + (v - 0.5);
+  }
+
+  // Papelão — marrom claro (tom quente, não prateado)
+  if (h >= 18 && h <= 48 && s >= 0.18 && s <= 0.58 && v >= 0.22 && v <= 0.72) {
+    scores.Papelao = 0.5 + s * 0.35;
+  }
+
+  // Penaliza papel quando parece metal
+  if (scores.Papel && grayDiff < 18 && v > 0.5) {
+    scores.Papel *= 0.6;
+  }
+
+  // Penaliza alumínio quando parece papel bege
+  if (scores.Aluminio && s > 0.12 && r > g + 10) {
+    scores.Aluminio *= 0.55;
   }
 
   // Pedra — cinza escuro opaco

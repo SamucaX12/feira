@@ -15,7 +15,7 @@ const orbitron = Orbitron({
 export const metadata: Metadata = {
   title: "EcoScan AI | Inteligência Artificial com Reciclagem",
   description:
-    "Projeto de Feira de Ciências — Turma 91. Sistema de IA para classificação de resíduos e indicação da lixeira correta.",
+    "Sistema de IA para classificação de resíduos e indicação da lixeira correta — Escola Municipal Ensino Fundamental Professor Alcides Conter.",
 };
 
 export const viewport = {

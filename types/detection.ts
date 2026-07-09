@@ -28,6 +28,20 @@ export interface DetectionsSummary {
     confidence: number;
     timestamp: string;
   } | null;
+  recent?: RecentDetection[];
+  byBin?: {
+    amarela: number;
+    marrom: number;
+    cinza: number;
+  };
+  storage?: string;
+}
+
+export interface RecentDetection {
+  id: string;
+  material: MaterialType;
+  confidence: number;
+  timestamp: string;
 }
 
 export interface LivePrediction {

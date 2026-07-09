@@ -22,16 +22,16 @@ export default function BinResult({
   if (compact) {
     return (
       <div
-        className={`rounded-xl border p-3 ${info.binRing} bg-black/30`}
-        style={{ borderColor: `${info.binColor}66` }}
+        className={`rounded-2xl border p-3.5 ${info.binRing} bg-black/35`}
+        style={{ borderColor: `${info.binColor}55` }}
       >
-        <p className="text-xs uppercase tracking-wider text-emerald-100/50">
-          {saved ? "Descarte registrado" : "Detectado"}
+        <p className="text-[10px] font-medium uppercase tracking-wider text-emerald-100/50">
+          {saved ? "✓ Descarte registrado" : "Detectado agora"}
         </p>
-        <p className="mt-1 font-semibold text-white">
+        <p className="mt-1.5 text-sm font-semibold text-white sm:text-base">
           {info.emoji} {info.label}
         </p>
-        <p className="mt-1 text-sm" style={{ color: info.binColor }}>
+        <p className="mt-1 text-sm font-medium" style={{ color: info.binColor }}>
           → {info.binName}
         </p>
       </div>
@@ -43,7 +43,8 @@ export default function BinResult({
       className={`rounded-2xl border-2 p-4 sm:p-5 ${info.binRing}`}
       style={{
         borderColor: info.binColor,
-        background: `linear-gradient(135deg, ${info.binColor}18, rgba(0,0,0,0.5))`,
+        background: `linear-gradient(145deg, ${info.binColor}20, rgba(0,0,0,0.55))`,
+        boxShadow: `0 8px 32px ${info.binColor}15`,
       }}
     >
       <div className="flex items-start gap-3">

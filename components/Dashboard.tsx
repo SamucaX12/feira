@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import BinResult from "@/components/BinResult";
+import { BIN_META, BinKey } from "@/lib/binStats";
+import { WASTE_INFO } from "@/lib/wasteRules";
 import {
   DetectionsSummary,
   LivePrediction,
   MATERIALS,
 } from "@/types/detection";
-import { WASTE_INFO } from "@/lib/wasteRules";
 
 interface DashboardProps {
   livePrediction: LivePrediction | null;
@@ -58,6 +59,8 @@ export default function Dashboard({
         totals: MATERIALS.map((material) => ({ material, count: 0 })),
         totalDetections: 0,
         lastDetection: null,
+        recent: [],
+        byBin: { amarela: 0, marrom: 0, cinza: 0 },
       });
       onReset?.();
     } catch (resetError) {
@@ -75,35 +78,40 @@ export default function Dashboard({
   );
 
   const lastMaterial = stats?.lastDetection?.material;
+  const byBin = stats?.byBin ?? { amarela: 0, marrom: 0, cinza: 0 };
+  const maxBin = Math.max(byBin.amarela, byBin.marrom, byBin.cinza, 1);
 
   return (
-    <section className="glass-panel flex h-full min-h-[520px] flex-col rounded-2xl p-4 shadow-neon-sm sm:p-5 md:p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
+    <section className="card-elevated flex h-full min-h-[520px] flex-col rounded-3xl p-4 sm:p-5 lg:p-6">
+      <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-[family-name:var(--font-orbitron)] text-xl font-semibold text-neon">
-            Dashboard
-          </h2>
-          <p className="mt-1 text-sm text-emerald-100/60">
-            Lixeiras e estatísticas
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neon/15 text-sm">
+              📊
+            </span>
+            <h2 className="section-title">Painel ao Vivo</h2>
+          </div>
+          <p className="mt-1.5 text-xs text-emerald-100/55 sm:text-sm">
+            Estatísticas e lixeiras
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => void handleReset()}
             disabled={resetting || loading}
-            className="rounded-full border border-red-400/30 px-3 py-1 text-xs text-red-200 transition hover:bg-red-950/30 disabled:opacity-40"
+            className="rounded-full border border-red-400/25 px-3 py-1.5 text-[10px] text-red-200 transition hover:bg-red-950/30 disabled:opacity-40 sm:text-xs"
           >
-            {resetting ? "..." : "Reset"}
+            {resetting ? "..." : "Zerar"}
           </button>
-          <div className="rounded-full border border-neon/30 px-3 py-1 text-xs text-neon">
+          <span className="rounded-full border border-neon/30 bg-neon/10 px-2.5 py-1 text-[10px] font-semibold text-neon sm:text-xs">
             LIVE
-          </div>
+          </span>
         </div>
       </div>
 
       {livePrediction && livePrediction.material && (
-        <div className="mb-4">
+        <div className="mb-4 animate-fade-in">
           <BinResult
             material={livePrediction.material}
             confidence={livePrediction.confidence}
@@ -127,6 +135,7 @@ export default function Dashboard({
         <StatCard
           label="Total detectado"
           value={loading ? "..." : String(stats?.totalDetections ?? 0)}
+          icon="♻️"
         />
         <StatCard
           label="Último material"
@@ -137,39 +146,68 @@ export default function Dashboard({
                 ? WASTE_INFO[lastMaterial].label
                 : "—"
           }
+          icon="🎯"
         />
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-500/40 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+        <div className="mb-4 rounded-xl border border-red-500/35 bg-red-950/25 px-4 py-3 text-sm text-red-200">
           {error}
         </div>
       )}
 
-      <div className="mb-4 grid grid-cols-3 gap-2 text-center text-[10px] sm:text-xs">
-        <BinLegend color="#FACC15" label="Amarela · Reciclável" />
-        <BinLegend color="#92400E" label="Marrom · Orgânico" />
-        <BinLegend color="#9CA3AF" label="Cinza · Rejeito" />
-      </div>
-
-      <div className="flex-1 space-y-4">
-        {MATERIALS.map((material) => {
-          const item = stats?.totals.find((entry) => entry.material === material);
-          const count = item?.count ?? 0;
-          const info = WASTE_INFO[material];
-          const width = `${Math.max((count / maxCount) * 100, count > 0 ? 8 : 0)}%`;
+      <div className="mb-5 space-y-3">
+        <p className="text-[10px] font-medium uppercase tracking-wider text-emerald-100/45">
+          Por lixeira
+        </p>
+        {(Object.keys(BIN_META) as BinKey[]).map((key) => {
+          const meta = BIN_META[key];
+          const count = byBin[key];
+          const width = `${Math.max((count / maxBin) * 100, count > 0 ? 10 : 0)}%`;
 
           return (
-            <div key={material}>
-              <div className="mb-1.5 flex items-center justify-between text-sm">
+            <div key={key}>
+              <div className="mb-1 flex items-center justify-between text-sm">
                 <span className="font-medium text-emerald-50">
-                  {info.emoji} {info.label}
+                  {meta.emoji} {meta.label}
                 </span>
                 <span className="font-[family-name:var(--font-orbitron)] text-neon">
                   {loading ? "..." : count}
                 </span>
               </div>
-              <div className="h-2.5 overflow-hidden rounded-full bg-black/40">
+              <div className="h-3 overflow-hidden rounded-full bg-black/45">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width, backgroundColor: meta.color }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex-1 space-y-3 overflow-y-auto">
+        <p className="text-[10px] font-medium uppercase tracking-wider text-emerald-100/45">
+          Por material
+        </p>
+        {MATERIALS.map((material) => {
+          const item = stats?.totals.find((entry) => entry.material === material);
+          const count = item?.count ?? 0;
+          const info = WASTE_INFO[material];
+          if (count === 0 && !loading) return null;
+          const width = `${Math.max((count / maxCount) * 100, count > 0 ? 8 : 0)}%`;
+
+          return (
+            <div key={material}>
+              <div className="mb-1 flex items-center justify-between text-xs sm:text-sm">
+                <span className="text-emerald-100/80">
+                  {info.emoji} {info.label}
+                </span>
+                <span className="font-[family-name:var(--font-orbitron)] text-neon/90">
+                  {loading ? "..." : count}
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-black/40">
                 <div
                   className="h-full rounded-full transition-all duration-700"
                   style={{ width, backgroundColor: info.binColor }}
@@ -180,38 +218,60 @@ export default function Dashboard({
         })}
       </div>
 
+      {stats?.recent && stats.recent.length > 0 && (
+        <div className="mt-5 border-t border-white/8 pt-4">
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-emerald-100/45">
+            Últimas detecções
+          </p>
+          <ul className="max-h-32 space-y-1.5 overflow-y-auto">
+            {stats.recent.slice(0, 6).map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center justify-between rounded-lg bg-black/25 px-3 py-2 text-xs"
+              >
+                <span className="text-emerald-100/75">
+                  {WASTE_INFO[item.material].emoji}{" "}
+                  {WASTE_INFO[item.material].label}
+                </span>
+                <span className="tabular-nums text-emerald-100/45">
+                  {(item.confidence * 100).toFixed(0)}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {stats?.lastDetection && (
-        <p className="mt-5 text-xs text-emerald-100/45">
-          Último:{" "}
-          {new Date(stats.lastDetection.timestamp).toLocaleString("pt-BR")} —{" "}
-          {(stats.lastDetection.confidence * 100).toFixed(0)}% confiança
+        <p className="mt-4 text-[10px] text-emerald-100/40">
+          Último registro:{" "}
+          {new Date(stats.lastDetection.timestamp).toLocaleString("pt-BR")}
         </p>
       )}
     </section>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon: string;
+}) {
   return (
-    <div className="rounded-xl border border-neon/15 bg-black/25 p-3 sm:p-4">
-      <p className="text-[10px] uppercase tracking-wider text-emerald-100/50 sm:text-xs">
-        {label}
-      </p>
+    <div className="rounded-2xl border border-neon/12 bg-black/30 p-3 sm:p-4">
+      <div className="flex items-center gap-2">
+        <span className="text-lg">{icon}</span>
+        <p className="text-[10px] uppercase tracking-wider text-emerald-100/45 sm:text-xs">
+          {label}
+        </p>
+      </div>
       <p className="mt-2 font-[family-name:var(--font-orbitron)] text-xl text-neon sm:text-2xl">
         {value}
       </p>
-    </div>
-  );
-}
-
-function BinLegend({ color, label }: { color: string; label: string }) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-black/20 px-2 py-2">
-      <div
-        className="mx-auto mb-1 h-3 w-3 rounded-full"
-        style={{ backgroundColor: color }}
-      />
-      <span className="text-emerald-100/60">{label}</span>
     </div>
   );
 }

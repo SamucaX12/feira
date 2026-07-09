@@ -2,19 +2,27 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import BinResult from "@/components/BinResult";
+import PredictionBars from "@/components/PredictionBars";
 import { classifyFromVideoFrame } from "@/lib/colorClassifier";
 import { cameraBlockedReason, isMobileDevice } from "@/lib/device";
-import { getTeachableMachineModelUrl, isTeachableMachineConfigured } from "@/lib/modelConfig";
+import {
+  getTeachableMachineModelUrl,
+  isTeachableMachineConfigured,
+} from "@/lib/modelConfig";
+import {
+  resolvePrediction,
+  TemporalVoteTracker,
+  type ResolvedPrediction,
+} from "@/lib/predictionEngine";
 import { loadTmImageModule } from "@/lib/tmLoader";
 import { getWasteInfo, normalizeMaterial } from "@/lib/wasteRules";
 import { LivePrediction, MaterialType } from "@/types/detection";
 import type { TmImageModule } from "@/types/tm";
 
-const SAVE_THRESHOLD = 0.5;
-const SHOW_THRESHOLD = 0.3;
-const STABLE_MS = 1200;
+const SHOW_THRESHOLD = 0.28;
+const STABLE_MS = 1400;
 const POST_COOLDOWN_MS = 3500;
-const SCAN_INTERVAL_MS = 300;
+const SCAN_INTERVAL_MS = 280;
 
 interface AutoScannerProps {
   onPredictionChange: (prediction: LivePrediction | null) => void;
@@ -36,24 +44,28 @@ export default function AutoScanner({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const modelRef = useRef<Awaited<ReturnType<TmImageModule["load"]>> | null>(null);
+  const modelRef = useRef<Awaited<ReturnType<TmImageModule["load"]>> | null>(
+    null
+  );
   const loopRef = useRef<number | null>(null);
   const scanningRef = useRef(false);
   const stableRef = useRef<StableTrack | null>(null);
-  const lastSavedRef = useRef<{ material: MaterialType; at: number } | null>(null);
+  const lastSavedRef = useRef<{ material: MaterialType; at: number } | null>(
+    null
+  );
   const savingRef = useRef(false);
-  const scanModeRef = useRef<ScanMode>("loading");
+  const voteTrackerRef = useRef(new TemporalVoteTracker());
 
   const tmConfigured = isTeachableMachineConfigured();
-  const [scanMode, setScanMode] = useState<ScanMode>(tmConfigured ? "loading" : "color");
+  const [scanMode, setScanMode] = useState<ScanMode>(
+    tmConfigured ? "loading" : "color"
+  );
   const [isMobile, setIsMobile] = useState(false);
   const [needsTap, setNeedsTap] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [status, setStatus] = useState("Toque para ativar a câmera");
   const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ label: string; confidence: number } | null>(
-    null
-  );
+  const [resolved, setResolved] = useState<ResolvedPrediction | null>(null);
   const [current, setCurrent] = useState<{
     material: MaterialType;
     confidence: number;
@@ -62,6 +74,7 @@ export default function AutoScanner({
     material: MaterialType;
     confidence: number;
   } | null>(null);
+  const [confirmProgress, setConfirmProgress] = useState(0);
 
   const stopScanLoop = useCallback(() => {
     scanningRef.current = false;
@@ -98,6 +111,8 @@ export default function AutoScanner({
 
         lastSavedRef.current = { material, at: now };
         stableRef.current = null;
+        voteTrackerRef.current.reset();
+        setConfirmProgress(0);
         setLastSaved({ material, confidence });
         setStatus("Descarte registrado com sucesso!");
         onDetectionSaved();
@@ -112,31 +127,51 @@ export default function AutoScanner({
     [onDetectionSaved]
   );
 
-  const processPrediction = useCallback(
-    async (rawMaterial: string, confidence: number) => {
-      setPreview({ label: rawMaterial, confidence });
+  const processResolved = useCallback(
+    async (result: ResolvedPrediction) => {
+      setResolved(result);
 
-      const material = normalizeMaterial(rawMaterial);
+      const material = result.material;
 
-      if (!material || confidence < SHOW_THRESHOLD) {
+      if (!material || result.confidence < SHOW_THRESHOLD) {
         stableRef.current = null;
+        voteTrackerRef.current.reset();
         setCurrent(null);
+        setConfirmProgress(0);
         onPredictionChange(null);
+        setStatus("Aponte a câmera para o resíduo com fundo limpo...");
+        return;
+      }
+
+      setCurrent({ material, confidence: result.confidence });
+      onPredictionChange({ material, confidence: result.confidence });
+
+      if (result.isAmbiguous) {
+        stableRef.current = null;
+        voteTrackerRef.current.reset();
+        setConfirmProgress(0);
         setStatus(
-          material
-            ? `Vendo ${rawMaterial} (${(confidence * 100).toFixed(0)}%) — aproxime mais`
-            : "Aponte a câmera para o resíduo..."
+          result.ambiguityHint ??
+            `${getWasteInfo(material)?.label} (${(result.confidence * 100).toFixed(0)}%) — ajuste o ângulo`
         );
         return;
       }
 
-      setCurrent({ material, confidence });
-      onPredictionChange({ material, confidence });
-
-      if (confidence < SAVE_THRESHOLD) {
+      if (!result.readyToConfirm) {
+        stableRef.current = null;
+        setConfirmProgress(0);
         setStatus(
-          `${getWasteInfo(material)?.label ?? material} (${(confidence * 100).toFixed(0)}%) — segure firme`
+          `${getWasteInfo(material)?.label} (${(result.confidence * 100).toFixed(0)}%) — segure firme`
         );
+        return;
+      }
+
+      voteTrackerRef.current.push(material, result.confidence);
+      const consensus = voteTrackerRef.current.getConsensus();
+
+      if (!consensus || consensus.material !== material) {
+        setConfirmProgress(0);
+        setStatus(`Analisando ${material}... mantenha parado`);
         return;
       }
 
@@ -145,18 +180,48 @@ export default function AutoScanner({
 
       if (track && track.material === material) {
         const elapsed = now - track.since;
-        setStatus(
-          `Confirmando ${material}... ${Math.min(100, Math.round((elapsed / STABLE_MS) * 100))}%`
-        );
+        const progress = Math.min(100, Math.round((elapsed / STABLE_MS) * 100));
+        setConfirmProgress(progress);
+        setStatus(`Confirmando ${material}... ${progress}%`);
         if (elapsed >= STABLE_MS) {
-          await saveDetection(material, confidence);
+          await saveDetection(material, consensus.confidence);
         }
       } else {
-        stableRef.current = { material, confidence, since: now };
-        setStatus(`Detectando: ${material} (${(confidence * 100).toFixed(0)}%)`);
+        stableRef.current = { material, confidence: consensus.confidence, since: now };
+        setConfirmProgress(0);
+        setStatus(`Detectando: ${material} (${(consensus.confidence * 100).toFixed(0)}%)`);
       }
     },
     [onPredictionChange, saveDetection]
+  );
+
+  const processColorFallback = useCallback(
+    async (rawMaterial: string, confidence: number) => {
+      const material = normalizeMaterial(rawMaterial);
+      if (!material) {
+        await processResolved({
+          material: null,
+          confidence: 0,
+          rawLabel: rawMaterial,
+          topCandidates: [],
+          isAmbiguous: false,
+          ambiguityHint: null,
+          readyToConfirm: confidence >= 0.55,
+        });
+        return;
+      }
+
+      await processResolved({
+        material,
+        confidence,
+        rawLabel: rawMaterial,
+        topCandidates: [{ material, confidence, label: rawMaterial }],
+        isAmbiguous: false,
+        ambiguityHint: null,
+        readyToConfirm: confidence >= 0.58,
+      });
+    },
+    [processResolved]
   );
 
   const startScanLoop = useCallback(() => {
@@ -173,18 +238,18 @@ export default function AutoScanner({
         try {
           if (modelRef.current) {
             const prediction = await modelRef.current.predict(video);
-            const top = prediction.reduce((best, item) =>
-              item.probability > best.probability ? item : best
-            );
-            await processPrediction(top.className, top.probability);
+            const resolvedResult = resolvePrediction(prediction);
+            await processResolved(resolvedResult);
           } else if (canvas) {
             const result = classifyFromVideoFrame(video, canvas);
             if (result) {
-              await processPrediction(result.material, result.confidence);
+              await processColorFallback(result.material, result.confidence);
             } else {
               stableRef.current = null;
+              voteTrackerRef.current.reset();
               setCurrent(null);
-              setPreview(null);
+              setResolved(null);
+              setConfirmProgress(0);
               onPredictionChange(null);
               setStatus("Centralize o objeto na câmera...");
             }
@@ -203,7 +268,7 @@ export default function AutoScanner({
     };
 
     void tick();
-  }, [onPredictionChange, processPrediction, stopScanLoop]);
+  }, [onPredictionChange, processColorFallback, processResolved, stopScanLoop]);
 
   const loadAiModel = useCallback(async (): Promise<ScanMode> => {
     if (!tmConfigured) return "color";
@@ -221,9 +286,7 @@ export default function AutoScanner({
     } catch (loadError) {
       console.warn("TM fallback:", loadError);
       modelRef.current = null;
-      setError(
-        "Modo backup ativo — centralize o objeto com boa luz."
-      );
+      setError("Modo backup ativo — use boa luz e fundo limpo.");
       return "color";
     }
   }, [tmConfigured]);
@@ -234,6 +297,8 @@ export default function AutoScanner({
 
     try {
       stopScanLoop();
+      voteTrackerRef.current.reset();
+      stableRef.current = null;
       streamRef.current?.getTracks().forEach((track) => track.stop());
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -253,7 +318,6 @@ export default function AutoScanner({
       }
 
       const mode = await loadAiModel();
-      scanModeRef.current = mode;
       setScanMode(mode);
       setIsReady(true);
       setNeedsTap(false);
@@ -267,7 +331,7 @@ export default function AutoScanner({
       const message =
         cameraError instanceof Error
           ? cameraError.name === "NotAllowedError"
-            ? "Permissão negada. Libere a câmera nas configurações do navegador."
+            ? "Permissão negada. Libere a câmera nas configurações."
             : cameraError.message
           : "Não foi possível acessar a câmera.";
 
@@ -308,36 +372,41 @@ export default function AutoScanner({
 
   const overlayLabel = current
     ? `${current.material} · ${(current.confidence * 100).toFixed(0)}%`
-    : preview
-      ? `${preview.label} · ${(preview.confidence * 100).toFixed(0)}%`
+    : resolved?.rawLabel
+      ? `${resolved.rawLabel} · ${(resolved.confidence * 100).toFixed(0)}%`
       : null;
 
   return (
-    <section className="glass-panel relative overflow-hidden rounded-2xl p-4 shadow-neon-sm sm:p-5 md:p-6">
+    <section className="card-elevated relative overflow-hidden rounded-3xl p-4 sm:p-5 lg:p-6">
       <canvas ref={canvasRef} className="hidden" aria-hidden />
 
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h2 className="font-[family-name:var(--font-orbitron)] text-lg font-semibold text-neon sm:text-xl">
-            Scanner Inteligente
-          </h2>
-          <p className="mt-1 text-xs text-emerald-100/60 sm:text-sm">{modeLabel}</p>
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-neon/15 text-sm">
+              📷
+            </span>
+            <h2 className="font-[family-name:var(--font-orbitron)] text-lg font-semibold text-neon sm:text-xl">
+              Scanner Inteligente
+            </h2>
+          </div>
+          <p className="mt-1.5 text-xs text-emerald-100/55 sm:text-sm">{modeLabel}</p>
         </div>
         <span
-          className={`rounded-full px-3 py-1 text-xs ${
+          className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider sm:text-xs ${
             isReady
-              ? "border border-neon/40 text-neon"
-              : "border border-yellow-400/30 text-yellow-200"
+              ? "border border-neon/40 bg-neon/10 text-neon"
+              : "border border-yellow-400/30 bg-yellow-950/30 text-yellow-200"
           }`}
         >
-          {isReady ? "LIVE" : "BOOT"}
+          {isReady ? "● Live" : "Boot"}
         </span>
       </div>
 
-      <div className="scan-grid relative overflow-hidden rounded-xl border border-neon/20 bg-black/50">
+      <div className="scan-grid relative overflow-hidden rounded-2xl border border-neon/25 bg-black/60 shadow-inner">
         <video
           ref={videoRef}
-          className={`aspect-[4/3] min-h-[220px] w-full object-cover sm:min-h-[320px] ${
+          className={`aspect-[4/3] min-h-[240px] w-full object-cover sm:min-h-[340px] lg:min-h-[380px] ${
             isMobile ? "" : "scale-x-[-1]"
           }`}
           playsInline
@@ -346,48 +415,74 @@ export default function AutoScanner({
         />
 
         {needsTap && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70 p-4">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/75 p-5 backdrop-blur-sm">
+            <div className="rounded-2xl border border-neon/20 bg-black/40 p-5 text-center">
+              <p className="text-4xl">📸</p>
+              <p className="mt-2 text-sm font-medium text-white">
+                Pronto para escanear
+              </p>
+              <p className="mt-1 text-xs text-emerald-100/55">
+                PET, alumínio, papel, papelão e mais
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => void startCamera()}
-              className="rounded-2xl border border-neon bg-neon/15 px-6 py-4 text-base font-semibold text-neon shadow-neon-sm active:scale-95"
+              className="btn-primary w-full max-w-xs text-base"
             >
               Ativar câmera
             </button>
-            <p className="max-w-xs text-center text-xs text-emerald-100/60">
-              Aponte para PET, alumínio, papel ou papelão
-            </p>
           </div>
         )}
 
         {isReady && (
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute inset-3 rounded-xl border border-neon/30 sm:inset-4" />
-            <div className="absolute left-3 right-3 h-0.5 animate-scan bg-neon shadow-neon sm:left-4 sm:right-4" />
+            <div className="absolute inset-4 rounded-xl border-2 border-dashed border-neon/35 sm:inset-6" />
+            <div className="absolute left-4 right-4 top-1/2 h-px -translate-y-1/2 bg-neon/20 sm:left-6 sm:right-6" />
+            <div className="absolute left-4 right-4 h-0.5 animate-scan bg-neon shadow-neon sm:left-6 sm:right-6" />
             {overlayLabel && (
-              <div className="absolute left-3 right-3 top-3 rounded-lg bg-black/80 px-3 py-2 text-center sm:left-4 sm:right-4 sm:top-4">
+              <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-neon/25 bg-black/85 px-4 py-3 backdrop-blur-md sm:bottom-4 sm:left-4 sm:right-4">
                 <p className="text-[10px] uppercase tracking-wider text-neon/70">
-                  {current ? "Detectado" : "Analisando"}
+                  {current ? "Material detectado" : "Analisando"}
                 </p>
                 <p className="font-[family-name:var(--font-orbitron)] text-sm font-bold text-white sm:text-base">
                   {overlayLabel}
                 </p>
+                {confirmProgress > 0 && (
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/50">
+                    <div
+                      className="h-full rounded-full bg-neon transition-all duration-200"
+                      style={{ width: `${confirmProgress}%` }}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
       </div>
 
-      <p className="mt-3 text-sm text-emerald-100/80">{status}</p>
+      <div className="mt-4 rounded-xl border border-white/8 bg-black/25 px-4 py-3">
+        <p className="text-sm leading-relaxed text-emerald-100/85">{status}</p>
+      </div>
+
+      {resolved && resolved.topCandidates.length > 1 && (
+        <div className="mt-4 rounded-xl border border-white/8 bg-black/25 p-4">
+          <PredictionBars
+            candidates={resolved.topCandidates}
+            highlight={current?.material ?? null}
+          />
+        </div>
+      )}
 
       {current && (
-        <div className="mt-4">
+        <div className="mt-4 animate-fade-in">
           <BinResult material={current.material} confidence={current.confidence} />
         </div>
       )}
 
       {lastSaved && !current && (
-        <div className="mt-4">
+        <div className="mt-4 animate-fade-in">
           <BinResult
             material={lastSaved.material}
             confidence={lastSaved.confidence}
@@ -397,7 +492,7 @@ export default function AutoScanner({
       )}
 
       {error && (
-        <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-sm text-amber-100">
+        <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-950/25 px-4 py-3 text-sm text-amber-100">
           {error}
         </p>
       )}

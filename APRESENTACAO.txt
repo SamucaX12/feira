@@ -1,0 +1,160 @@
+================================================================================
+                    ECOSCAN AI — APRESENTAÇÃO ATUALIZADA
+     Escola Municipal Ensino Fundamental Professor Alcides Conter · 2026
+================================================================================
+
+EQUIPE:
+  • Samuel Costa Nunes ........... Desenvolvimento & IA
+  • João Rafael Vieira de Souza .... Abertura & Impacto ambiental
+  • Daniel da Silva Machado ........ Demonstração ao vivo
+
+MODELO IA (atualizado):
+  https://teachablemachine.withgoogle.com/models/SFBjGFRjR/
+
+MATERIAIS TREINADOS:
+  PET · Papel · Papelão · Alumínio (latinha Monster) · Lata · Pedra · Orgânico
+
+DURAÇÃO: 4 a 6 minutos
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+JOÃO RAFAEL — ABERTURA + IMPACTO (~1 min 20 seg)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[ABERTURA — ~45 seg]
+
+"Olá! Somos alunos da Escola Municipal Ensino Fundamental Professor Alcides
+Conter e viemos apresentar o EcoScan AI.
+
+Nosso projeto se chama Inteligência Artificial com Reciclagem.
+
+O problema é simples: muita gente ainda não sabe em qual lixeira jogar cada
+tipo de lixo. Plástico, papel, metal, pedra... tudo vai pro mesmo lugar, e
+isso prejudica o meio ambiente.
+
+A nossa solução usa Inteligência Artificial e a câmera do celular para
+identificar o resíduo na hora e mostrar qual lixeira usar.
+
+O site funciona no notebook e no celular — é só escanear o QR Code ou abrir
+o link. Não precisa instalar nada."
+
+[Aponta pro QR Code na tela ou cartaz]
+
+[IMPACTO E CIÊNCIA — ~35 seg]
+
+"Por que isso é ciência?
+
+A Inteligência Artificial aprende com exemplos — igual a gente estuda pra
+prova. Quanto mais fotos de cada material, melhor ela fica. Isso se chama
+aprendizado de máquina.
+
+Quando cada resíduo vai pra lixeira certa, mais material é reciclado, menos
+vai pro aterro. Segundo a PNRS — Política Nacional de Resíduos Sólidos — a
+coleta seletiva usa cores: amarela é reciclável, marrom é orgânico, cinza
+é rejeito. O EcoScan ajuda a colocar isso em prática."
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SAMUEL COSTA — PARTE TÉCNICA + ENCERRAMENTO (~2 min)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[PARTE TÉCNICA — ~1 min 30 seg]
+
+"Eu desenvolvi o EcoScan AI. Vou explicar como funciona.
+
+É um site com visão computacional — a câmera 'enxerga' o objeto e um
+computador processa a imagem em tempo real.
+
+Treinamos a IA no Teachable Machine, do Google. Tiramos fotos de materiais
+reais: garrafa PET, papel, papelão, latinha de alumínio — inclusive lata de
+Monster — e também pedras para a lixeira cinza.
+
+Quando alguém aponta a câmera, a IA analisa e, se a confiança for alta,
+confirma o material e mostra a lixeira:
+
+  • AMARELA — reciclável: PET, papel, papelão, alumínio, lata
+  • MARROM — orgânico
+  • CINZA — pedra e rejeito
+
+O site foi feito com Next.js e está na nuvem, na Vercel. Funciona em
+qualquer lugar — na escola, no celular, no notebook — sem depender do meu PC.
+
+Tem QR Code pra galera acessar na hora, dashboard com estatísticas ao vivo
+e filtros inteligentes pra não confundir alumínio com papel."
+
+[Mostra QR Code / dashboard na tela]
+
+[ENCERRAMENTO — ~20 seg]
+
+"O EcoScan AI mostra que tecnologia e meio ambiente podem andar juntos.
+Foi feito para educação ambiental e ciência — não é produto comercial.
+
+Obrigado! Estamos abertos a perguntas."
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DANIEL — DEMONSTRAÇÃO AO VIVO (~1 min 30 seg)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"Agora eu vou mostrar funcionando na prática.
+
+Abro o site no celular — ou escaneio o QR Code — e toco em 'Ativar câmera'.
+O navegador pede permissão, é normal.
+
+[1] Garrafa PET... [segura na câmera, fundo limpo]
+Detectou PET — Lixeira Amarela, reciclável. A barra sobe e o dashboard registra.
+
+[2] Folha de papel... [troca]
+Papel — lixeira amarela também.
+
+[3] Latinha de Monster... [troca]
+Alumínio — lixeira amarela. A gente treinou com essa lata de energético.
+
+[4] Caixa de papelão... [troca]
+Papelão — amarela de novo.
+
+[5] Pedra... [troca]
+Pedra — agora sim, Lixeira Cinza, rejeito. Não recicla.
+
+Reparem: em poucos segundos identifica e confirma. Isso podia ser usado em
+escolas e eventos pra ensinar a reciclar certo."
+
+[João comenta o dashboard subindo enquanto Daniel demonstra]
+
+
+================================================================================
+                         PERGUNTAS DOS JURADOS
+================================================================================
+
+P: "Como a IA aprende?"
+R (Samuel): "Com fotos reais no Teachable Machine. A rede neural compara a
+imagem da câmera com o que viu no treino — PET, Monster, papelão, pedra..."
+
+P: "Funciona com qualquer lixo?"
+R (Daniel): "Funciona melhor com o que treinamos. Quanto mais fotos, melhor.
+Agora reconhece bem alumínio, papelão e pedra também."
+
+P: "Precisa de internet?"
+R (Samuel): "Sim — o site e o modelo de IA rodam online na Vercel."
+
+P: "Como acessam o site?"
+R (João): "Pelo QR Code na tela ou cartaz, ou pelo link. Abre no Chrome do celular."
+
+P: "Quem fez o quê?"
+R: "Samuel programou e integrou a IA. Daniel testou e demonstra. Eu ajudo na
+apresentação e na parte ambiental."
+
+
+================================================================================
+                              DICAS RÁPIDAS
+================================================================================
+
+  • Objetos prontos: PET, papel, Monster, papelão, pedra
+  • Fundo LIMPO — só o objeto na câmera
+  • Boa luz = IA acerta mais
+  • QR Code visível na banca / notebook
+  • Link e site abertos ANTES de começar
+  • Se errar, muda ângulo e tenta de novo
+
+================================================================================

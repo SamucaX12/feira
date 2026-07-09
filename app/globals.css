@@ -4,11 +4,19 @@
 
 :root {
   --neon: #00ff88;
-  --bg: #050807;
+  --neon-dim: #00cc6a;
+  --bg: #030605;
+  --panel: #0c1210;
+  --panel-2: #111916;
 }
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -19,24 +27,92 @@ body {
 body {
   color: #e8fff3;
   background:
-    radial-gradient(circle at top left, rgba(0, 255, 136, 0.08), transparent 40%),
-    radial-gradient(circle at bottom right, rgba(0, 255, 136, 0.05), transparent 35%),
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 255, 136, 0.12), transparent),
+    radial-gradient(circle at 100% 0%, rgba(0, 180, 120, 0.06), transparent 40%),
+    radial-gradient(circle at 0% 100%, rgba(0, 255, 136, 0.04), transparent 35%),
     var(--bg);
+}
+
+@layer components {
+  .glass-panel {
+    background: rgba(12, 18, 16, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 255, 136, 0.14);
+  }
+
+  .card-elevated {
+    background: linear-gradient(160deg, rgba(17, 25, 22, 0.95), rgba(8, 12, 10, 0.92));
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(0, 255, 136, 0.16);
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.35),
+      0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  }
+
+  .btn-primary {
+    @apply rounded-2xl border border-neon bg-neon/15 px-6 py-3.5 font-semibold text-neon shadow-neon-sm transition active:scale-[0.98] hover:bg-neon/25;
+  }
+
+  .section-title {
+    @apply font-[family-name:var(--font-orbitron)] text-lg font-semibold text-neon sm:text-xl;
+  }
+
+  .badge {
+    @apply rounded-full border px-3 py-1 text-xs;
+  }
 }
 
 .scan-grid {
   background-image:
-    linear-gradient(rgba(0, 255, 136, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 255, 136, 0.08) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-.glass-panel {
-  background: rgba(17, 25, 22, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 255, 136, 0.18);
+    linear-gradient(rgba(0, 255, 136, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 136, 0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 .neon-text {
-  text-shadow: 0 0 12px rgba(0, 255, 136, 0.45);
+  text-shadow: 0 0 20px rgba(0, 255, 136, 0.35);
+}
+
+.hero-glow {
+  position: relative;
+}
+
+.hero-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 255, 136, 0.15),
+    transparent 40%,
+    rgba(0, 255, 136, 0.05)
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out;
+}
+
+/* Mobile safe areas */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
 }

@@ -34,7 +34,10 @@ Em **Vercel → seu projeto → Settings → Environment Variables**:
 
 | Nome | Valor |
 |------|-------|
-| `NEXT_PUBLIC_TM_MODEL_URL` | `https://teachablemachine.withgoogle.com/models/-5I1Vxwti/` |
+| `NEXT_PUBLIC_TM_MODEL_URL` | `https://teachablemachine.withgoogle.com/models/SFBjGFRjR/` |
+| `NEXT_PUBLIC_SITE_URL` | `https://seu-projeto.vercel.app` (URL fixa do QR Code) |
+
+`NEXT_PUBLIC_SITE_URL` garante que o QR Code sempre aponte pro link da Vercel, mesmo se alguém abrir o site por outro endereço.
 
 Marque **Production**, **Preview** e **Development**. Salve e clique **Redeploy**.
 

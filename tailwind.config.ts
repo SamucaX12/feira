@@ -20,15 +20,20 @@ const config: Config = {
       animation: {
         scan: "scan 2.5s ease-in-out infinite",
         pulseNeon: "pulseNeon 2s ease-in-out infinite",
+        "fade-in": "fadeIn 0.35s ease-out",
       },
       keyframes: {
         scan: {
-          "0%, 100%": { top: "8%" },
-          "50%": { top: "88%" },
+          "0%, 100%": { top: "12%" },
+          "50%": { top: "82%" },
         },
         pulseNeon: {
           "0%, 100%": { opacity: "0.6" },
           "50%": { opacity: "1" },
+        },
+        fadeIn: {
+          "0%": { opacity: "0", transform: "translateY(6px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
         },
       },
     },
