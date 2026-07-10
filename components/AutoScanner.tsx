@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import BinResult from "@/components/BinResult";
 import PredictionBars from "@/components/PredictionBars";
-import { classifyFromVideoFrame } from "@/lib/colorClassifier";
+import { classifyFromVideoFrame, analyzeVideoFrame } from "@/lib/colorClassifier";
+import { mergeWithVisualAnalysis } from "@/lib/hybridClassifier";
 import { cameraBlockedReason, isMobileDevice } from "@/lib/device";
 import {
   getTeachableMachineModelUrl,
@@ -244,7 +245,11 @@ export default function AutoScanner({
         try {
           if (modelRef.current) {
             const prediction = await modelRef.current.predict(video);
-            const resolvedResult = resolvePrediction(prediction);
+            let resolvedResult = resolvePrediction(prediction);
+            if (canvas) {
+              const visual = analyzeVideoFrame(video, canvas);
+              resolvedResult = mergeWithVisualAnalysis(resolvedResult, visual);
+            }
             await processResolved(resolvedResult);
           } else if (canvas) {
             const result = classifyFromVideoFrame(video, canvas);

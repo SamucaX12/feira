@@ -18,6 +18,8 @@ export interface ResolvedPrediction {
 
 const CONFUSION_GROUPS: MaterialType[][] = [
   ["Aluminio", "Lata"],
+  ["Aluminio", "PET"],
+  ["Lata", "PET"],
   ["Papel", "Papelao"],
   ["Aluminio", "Papel"],
   ["Lata", "Papel"],
@@ -106,6 +108,17 @@ export function resolvePrediction(
     ) {
       ambiguityHint =
         "Aproxime a latinha — alumínio brilha mais, lata de aço é mais escura.";
+    } else if (
+      (top.material === "Aluminio" || top.material === "Lata") &&
+      second.material === "PET"
+    ) {
+      ambiguityHint =
+        "Parece plástico ou metal? Garrafa PET é plástico — latinha é metal.";
+    } else if (
+      top.material === "PET" &&
+      (second.material === "Aluminio" || second.material === "Lata")
+    ) {
+      ambiguityHint = "Confirme: garrafa plástica ou latinha de metal?";
     } else if (
       top.material === "Papel" ||
       top.material === "Papelao" ||
